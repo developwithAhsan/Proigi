@@ -7,8 +7,9 @@ Proigi is a custom Project I.G.I. game portal. The game does **not** run inside 
 1. The Vercel build downloads the OpenIGI WebAssembly/WebGPU browser package.
 2. The build verifies its SHA-256 digest and confirms that the release source commit matches the current `master` revision of [developwithAhsan/OpenIGI](https://github.com/developwithAhsan/OpenIGI).
 3. The browser package is extracted into Vercel's `dist/` output. Proigi's own `index.html`, page design, loader and game canvas are served from the Proigi domain.
-4. When the player clicks **Play Game**, OpenIGI's browser runtime starts on Proigi's own canvas. The browser fetches the hosted game-data bundles, reports progress, caches them locally and prefetches mission bundles in the background.
-5. The in-game Co-op screen uses OpenIGI's room system. The browser build uses WebRTC data channels and the existing OpenIGI master/room service; host and join options are passed to the same-site browser runtime.
+4. When the player clicks **Download & Play**, Proigi downloads every bundle listed by the hosted game-data index before starting the engine. Each newly downloaded bundle is SHA-256 verified and saved in Cache Storage. If the browser cannot cache the complete data set or does not have enough storage, the game does not start and an actionable error is shown. Existing cached bundles are reused on later visits.
+5. Only after the complete bundle set is available does the browser load the base installation into the WebAssembly file system and boot the game. Large mission files are unpacked from the already-downloaded cache when their mission is selected; they no longer need a network download during play.
+6. The in-game Co-op screen uses OpenIGI's room system. The browser build uses WebRTC data channels and the existing OpenIGI master/room service; host and join options are passed to the same-site browser runtime.
 
 The pinned version is OpenIGI Web v0.6.1 from commit `719938d4413a9f7ffd408519c066091edcedf906`. The user's OpenIGI fork currently points to that exact commit. The build fails intentionally if the fork moves, so a new engine release must be reviewed and pinned instead of silently mixing source and binary versions.
 
@@ -31,7 +32,7 @@ The build removes Apache-style `.br` and `.gz` sidecars to avoid double-compress
 
 ## Browser and game requirements
 
-The game requires HTTPS and a browser with WebGPU support and hardware acceleration. The OpenIGI browser build documents Project I.G.I. missions 1–6 with the original graphics preset. It is not the full desktop remaster.
+The game requires HTTPS, a current browser with WebGPU support, hardware acceleration, and enough browser storage for all hosted mission bundles. The first **Download & Play** can take time and use substantial data; progress is shown and the game starts only when all bundles are cached and verified. Later visits reuse the cache. The OpenIGI browser build documents Project I.G.I. missions 1–6 with the original graphics preset. It is not the full desktop remaster.
 
 The OpenIGI browser package does not contain the original commercial game's mission data, models, textures or sounds. The browser runtime obtains the published game-data bundles from OpenIGI's existing data service (`data.openigi.com`) and caches them in the player's browser. Proigi does not copy or redistribute those commercial game-data files.
 
