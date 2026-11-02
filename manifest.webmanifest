@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "Proigi — Project I.G.I.",
+  "short_name": "Proigi",
+  "description": "Play Project I.G.I. in the Proigi browser game portal.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0a0e0b",
+  "theme_color": "#0a0e0b"
+}
