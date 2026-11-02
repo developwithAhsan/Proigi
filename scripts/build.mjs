@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, readdir, rm, stat, copyFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, copyFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,6 +57,135 @@ async function removeCompressedSidecars(directory) {
       await rm(path, { force: true });
     }
   }
+}
+
+function replaceExactly(source, needle, replacement, label) {
+  const first = source.indexOf(needle);
+  if (first < 0 || source.indexOf(needle, first + needle.length) !== -1) {
+    throw new Error("The pinned OpenIGI runtime changed; cannot safely apply " + label + ".");
+  }
+  return source.slice(0, first) + replacement + source.slice(first + needle.length);
+}
+
+async function patchBrowserRuntime() {
+  const filesPath = join(DIST, "game-files.js");
+  let files = await readFile(filesPath, "utf8");
+  const prefetchMethod = [
+    "    async prefetchAll(onProgress = () => {}) {",
+    "      const cache = await dataCache();",
+    "      if (!cache) throw new Error('This browser cannot store downloaded game files. Enable site storage and try again.');",
+    "      try { await navigator.storage?.persist?.(); } catch {}",
+    "      const estimate = await navigator.storage?.estimate?.().catch(() => null);",
+    "      const order = name => Number(name.match(/(\\d+)$/)?.[1] ?? 0);",
+    "      const names = Object.keys(index.bundles).sort((a, b) => {",
+    "        if (a === 'base') return b === 'base' ? 0 : -1;",
+    "        if (b === 'base') return 1;",
+    "        return order(a) - order(b) || a.localeCompare(b);",
+    "      });",
+    "      let total = 0;",
+    "      let missing = 0;",
+    "      for (const name of names) {",
+    "        const bundle = index.bundles[name];",
+    "        total += bundle.size;",
+    "        if (!(await cache.match(new URL(bundle.url, base).href))) missing += bundle.size;",
+    "      }",
+    "      const available = estimate?.quota ? estimate.quota - (estimate.usage ?? 0) : Infinity;",
+    "      if (Number.isFinite(available) && available < missing) {",
+    "        throw new Error('Not enough browser storage for all game files. Free at least ' + (missing / 1048576).toFixed(0) + ' MB, then reload and try again.');",
+    "      }",
+    "      let done = 0;",
+    "      for (const name of names) {",
+    "        const bundle = index.bundles[name];",
+    "        const url = new URL(bundle.url, base).href;",
+    "        if (await cache.match(url)) {",
+    "          done += bundle.size;",
+    "          onProgress(done, total, name);",
+    "          continue;",
+    "        }",
+    "        await keep(name, got => onProgress(done + got, total, name), true);",
+    "        done += bundle.size;",
+    "        onProgress(done, total, name);",
+    "      }",
+    "    },",
+    ""
+  ].join("\\n");
+  files = replaceExactly(files, "    async prefetch() {", prefetchMethod + "    async prefetch() {", "full game-data preloader");
+  const oldKeep = [
+    "  function keep(name) {",
+    "    if (!kept.has(name)) {",
+    "      kept.set(name, (async () => {",
+    "        const url = new URL(index.bundles[name].url, base).href;",
+    "        const cache = await dataCache();",
+    "        if (await cache?.match(url)) return null;",
+    "        const bytes = await downloadChecked(name);",
+    "        return (await store(url, bytes)) ? null : bytes;",
+    "      })());",
+    "      kept.get(name).catch(() => kept.delete(name));",
+    "    }",
+    "    return kept.get(name);",
+    "  }"
+  ].join("\\n");
+  const newKeep = [
+    "  function keep(name, report, requireCache = false) {",
+    "    if (!kept.has(name)) {",
+    "      kept.set(name, (async () => {",
+    "        const url = new URL(index.bundles[name].url, base).href;",
+    "        const cache = await dataCache();",
+    "        if (await cache?.match(url)) return null;",
+    "        const bytes = await downloadChecked(name, report);",
+    "        const saved = await store(url, bytes);",
+    "        if (requireCache && !saved) throw new Error('The browser could not save every game file. Free device storage, then reload and retry.');",
+    "        return saved ? null : bytes;",
+    "      })());",
+    "      kept.get(name).catch(() => kept.delete(name));",
+    "    }",
+    "    return kept.get(name);",
+    "  }"
+  ].join("\\n");
+  files = replaceExactly(files, oldKeep, newKeep, "verified cache writes");
+  const oldDownloadChecked = [
+    "  async function downloadChecked(name) {",
+    "    const bundle = index.bundles[name];",
+    "    const url = new URL(bundle.url, base).href;",
+    "    const bytes = await download(url, bundle.size, got => source.onDownload?.(name, got, bundle.size));",
+    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(` + "`" + "${bundle.url} arrived damaged; reload to try again." + "`" + `);
+    "    return bytes;",
+    "  }"
+  ].join("\\n");
+  const newDownloadChecked = [
+    "  async function downloadChecked(name, report) {",
+    "    const bundle = index.bundles[name];",
+    "    const url = new URL(bundle.url, base).href;",
+    "    const bytes = await download(url, bundle.size, got => {",
+    "      source.onDownload?.(name, got, bundle.size);",
+    "      report?.(got, bundle.size);",
+    "    });",
+    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(` + "`" + "${bundle.url} arrived damaged; reload to try again." + "`" + `);
+    "    return bytes;",
+    "  }"
+  ].join("\\n");
+  files = replaceExactly(files, oldDownloadChecked, newDownloadChecked, "download progress and SHA-256 verification");
+  await writeFile(filesPath, files);
+  const mainPath = join(DIST, "main.js");
+  let main = await readFile(mainPath, "utf8");
+  const oldLoad = [
+    "  const read = await files.load(source, fs, GAME_ROOT, (done, total) =>",
+    "    progress(source.hosted ? 'Unpacking game files' : 'Reading game files', total ? done / total : 0, `${megabytes(done)} of ${megabytes(total)} MB`));",
+    "  console.log(`Read ${read.files} files; ${read.deferred} wait for their missions.`);",
+    "  if (source.hosted) source.onDownload = null;"
+  ].join("\\n");
+  const newLoad = [
+    "  if (source.hosted) {",
+    "    await source.prefetchAll((done, total, name) =>",
+    "      progress('Downloading all game data · ' + name, total ? done / total : 1, megabytes(done) + ' of ' + megabytes(total) + ' MB cached'));",
+    "  }",
+    "  const read = await files.load(source, fs, GAME_ROOT, (done, total) =>",
+    "    progress(source.hosted ? 'Preparing game files' : 'Reading game files', total ? done / total : 0, `${megabytes(done)} of ${megabytes(total)} MB`));",
+    "  console.log(`Read ${read.files} files; ${read.deferred} large mission files are ready in the verified browser cache.`);",
+    "  if (source.hosted) source.onDownload = null;"
+  ].join("\\n");
+  main = replaceExactly(main, oldLoad, newLoad, "download-before-engine-start flow");
+  await writeFile(mainPath, main);
 }
 
 async function countFiles(directory) {
@@ -128,6 +257,8 @@ async function main() {
 
   log("Package integrity verified. Extracting the game runtime into dist/...");
   await run("tar", ["-xzf", archive, "-C", DIST]);
+  log("Applying the black-screen fix and full-download-before-launch flow...");
+  await patchBrowserRuntime();
 
   const builtIndexPath = join(DIST, "index.html");
   const builtIndex = await readFile(builtIndexPath, "utf8");
@@ -150,7 +281,7 @@ async function main() {
 
   await copyFile(join(ROOT, "OPENIGI-LICENSE-GPL-3.0.txt"), join(DIST, "OPENIGI-LICENSE-GPL-3.0.txt"));
   await copyFile(join(ROOT, "manifest.webmanifest"), join(DIST, "manifest.webmanifest"));
-  await import("node:fs/promises").then(fs => fs.writeFile(join(DIST, "proigi-build.json"), JSON.stringify({ version: VERSION, sourceRepo: SOURCE_REPO, sourceCommit: SOURCE_COMMIT, archiveSha256: ARCHIVE_SHA256 }, null, 2) + "\n"));
+  await import("node:fs/promises").then(fs => fs.writeFile(join(DIST, "proigi-build.json"), JSON.stringify({ version: VERSION, sourceRepo: SOURCE_REPO, sourceCommit: SOURCE_COMMIT, archiveSha256: ARCHIVE_SHA256, runtimePatch: "download-before-boot-v1" }, null, 2) + "\n"));
 
   const mustExist = [
     "index.html",
