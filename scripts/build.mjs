@@ -131,7 +131,7 @@ async function main() {
 
   const builtIndexPath = join(DIST, "index.html");
   const builtIndex = await readFile(builtIndexPath, "utf8");
-  const importMapMatch = builtIndex.match(/<script type="importmap">([\\s\\S]*?)<\\/script>/i);
+  const importMapMatch = builtIndex.match(/<script type="importmap">([\s\S]*?)<\/script>/i);
   if (!importMapMatch || !importMapMatch[1].trim()) {
     throw new Error("The compiled OpenIGI package has no populated WebAssembly import map.");
   }
@@ -150,6 +150,7 @@ async function main() {
 
   await copyFile(join(ROOT, "OPENIGI-LICENSE-GPL-3.0.txt"), join(DIST, "OPENIGI-LICENSE-GPL-3.0.txt"));
   await copyFile(join(ROOT, "manifest.webmanifest"), join(DIST, "manifest.webmanifest"));
+  await import("node:fs/promises").then(fs => fs.writeFile(join(DIST, "proigi-build.json"), JSON.stringify({ version: VERSION, sourceRepo: SOURCE_REPO, sourceCommit: SOURCE_COMMIT, archiveSha256: ARCHIVE_SHA256 }, null, 2) + "\\n"));
 
   const mustExist = [
     "index.html",
