@@ -148,7 +148,7 @@ async function patchBrowserRuntime() {
     "    const bundle = index.bundles[name];",
     "    const url = new URL(bundle.url, base).href;",
     "    const bytes = await download(url, bundle.size, got => source.onDownload?.(name, got, bundle.size));",
-    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(`${bundle.url} arrived damaged; reload to try again.`);
+    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(`${bundle.url} arrived damaged; reload to try again.`);",
     "    return bytes;",
     "  }"
   ].join("\n");
@@ -160,7 +160,7 @@ async function patchBrowserRuntime() {
     "      source.onDownload?.(name, got, bundle.size);",
     "      report?.(got, bundle.size);",
     "    });",
-    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(`${bundle.url} arrived damaged; reload to try again.`);
+    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(`${bundle.url} arrived damaged; reload to try again.`);",
     "    return bytes;",
     "  }"
   ].join("\n");
