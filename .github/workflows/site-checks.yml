@@ -1,4 +1,4 @@
-name: Proigi site checks
+name: Proigi web build checks
 
 on:
   push:
@@ -10,8 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  build-and-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -19,5 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate static site
-        run: node scripts/check-site.mjs
+      - name: Build the local WebAssembly game site
+        run: npm run build
+      - name: Validate the final Vercel output
+        run: npm run check
