@@ -108,7 +108,7 @@ async function patchBrowserRuntime() {
     "      }",
     "    },",
     ""
-  ].join("\\n");
+  ].join("\n");
   files = replaceExactly(files, "    async prefetch() {", prefetchMethod + "    async prefetch() {", "full game-data preloader");
   const oldKeep = [
     "  function keep(name) {",
@@ -124,7 +124,7 @@ async function patchBrowserRuntime() {
     "    }",
     "    return kept.get(name);",
     "  }"
-  ].join("\\n");
+  ].join("\n");
   const newKeep = [
     "  function keep(name, report, requireCache = false) {",
     "    if (!kept.has(name)) {",
@@ -141,17 +141,17 @@ async function patchBrowserRuntime() {
     "    }",
     "    return kept.get(name);",
     "  }"
-  ].join("\\n");
+  ].join("\n");
   files = replaceExactly(files, oldKeep, newKeep, "verified cache writes");
   const oldDownloadChecked = [
     "  async function downloadChecked(name) {",
     "    const bundle = index.bundles[name];",
     "    const url = new URL(bundle.url, base).href;",
     "    const bytes = await download(url, bundle.size, got => source.onDownload?.(name, got, bundle.size));",
-    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(` + "`" + "${bundle.url} arrived damaged; reload to try again." + "`" + `);
+    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(`${bundle.url} arrived damaged; reload to try again.`);
     "    return bytes;",
     "  }"
-  ].join("\\n");
+  ].join("\n");
   const newDownloadChecked = [
     "  async function downloadChecked(name, report) {",
     "    const bundle = index.bundles[name];",
@@ -160,10 +160,10 @@ async function patchBrowserRuntime() {
     "      source.onDownload?.(name, got, bundle.size);",
     "      report?.(got, bundle.size);",
     "    });",
-    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(` + "`" + "${bundle.url} arrived damaged; reload to try again." + "`" + `);
+    "    if ((await sha256(bytes)) !== bundle.sha256) throw new Error(`${bundle.url} arrived damaged; reload to try again.`);
     "    return bytes;",
     "  }"
-  ].join("\\n");
+  ].join("\n");
   files = replaceExactly(files, oldDownloadChecked, newDownloadChecked, "download progress and SHA-256 verification");
   await writeFile(filesPath, files);
   const mainPath = join(DIST, "main.js");
@@ -173,7 +173,7 @@ async function patchBrowserRuntime() {
     "    progress(source.hosted ? 'Unpacking game files' : 'Reading game files', total ? done / total : 0, `${megabytes(done)} of ${megabytes(total)} MB`));",
     "  console.log(`Read ${read.files} files; ${read.deferred} wait for their missions.`);",
     "  if (source.hosted) source.onDownload = null;"
-  ].join("\\n");
+  ].join("\n");
   const newLoad = [
     "  if (source.hosted) {",
     "    await source.prefetchAll((done, total, name) =>",
@@ -183,7 +183,7 @@ async function patchBrowserRuntime() {
     "    progress(source.hosted ? 'Preparing game files' : 'Reading game files', total ? done / total : 0, `${megabytes(done)} of ${megabytes(total)} MB`));",
     "  console.log(`Read ${read.files} files; ${read.deferred} large mission files are ready in the verified browser cache.`);",
     "  if (source.hosted) source.onDownload = null;"
-  ].join("\\n");
+  ].join("\n");
   main = replaceExactly(main, oldLoad, newLoad, "download-before-engine-start flow");
   await writeFile(mainPath, main);
 }
