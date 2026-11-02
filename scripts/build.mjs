@@ -168,6 +168,7 @@ async function patchBrowserRuntime() {
   await writeFile(filesPath, files);
   const mainPath = join(DIST, "main.js");
   let main = await readFile(mainPath, "utf8");
+  main = replaceExactly(main, "  const offerHosted = status => {\n    offer('Play now',", "  const offerHosted = status => {\n    offer('Download & Play',", "download-first button label");
   const oldLoad = [
     "  const read = await files.load(source, fs, GAME_ROOT, (done, total) =>",
     "    progress(source.hosted ? 'Unpacking game files' : 'Reading game files', total ? done / total : 0, `${megabytes(done)} of ${megabytes(total)} MB`));",
