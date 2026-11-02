@@ -150,7 +150,7 @@ async function main() {
 
   await copyFile(join(ROOT, "OPENIGI-LICENSE-GPL-3.0.txt"), join(DIST, "OPENIGI-LICENSE-GPL-3.0.txt"));
   await copyFile(join(ROOT, "manifest.webmanifest"), join(DIST, "manifest.webmanifest"));
-  await import("node:fs/promises").then(fs => fs.writeFile(join(DIST, "proigi-build.json"), JSON.stringify({ version: VERSION, sourceRepo: SOURCE_REPO, sourceCommit: SOURCE_COMMIT, archiveSha256: ARCHIVE_SHA256 }, null, 2) + "\\n"));
+  await import("node:fs/promises").then(fs => fs.writeFile(join(DIST, "proigi-build.json"), JSON.stringify({ version: VERSION, sourceRepo: SOURCE_REPO, sourceCommit: SOURCE_COMMIT, archiveSha256: ARCHIVE_SHA256 }, null, 2) + "\n"));
 
   const mustExist = [
     "index.html",
