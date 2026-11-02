@@ -1,39 +1,50 @@
 # Proigi
 
-A lightweight portal for the Project I.G.I. browser client and OpenIGI desktop releases.
+Proigi is a custom Project I.G.I. game portal. The game does **not** run inside an iframe and does not redirect players to OpenIGI's website.
 
-## What the site does
+## How browser play works
 
-- **Browser play:** embeds the live OpenIGI browser client from [openigi.com](https://openigi.com/). The game engine and browser game data remain on OpenIGI's servers; Proigi does not mirror or bundle them.
-- **Co-op entry points:** the host button opens OpenIGI with `?host`; the join form opens it with `?join=CODE`. An optional callsign is passed as `?name=`. Public rooms can be browsed in the game's Co-op screen.
-- **Desktop downloads:** the launcher buttons link to OpenIGI's official download/install endpoints. The standalone game-package links are refreshed from the upstream GitHub latest-release API, with verified v0.6.1 links as a fallback.
-- **Responsive static frontend:** no build tool, framework, database or environment variables are required.
+1. The Vercel build downloads the OpenIGI WebAssembly/WebGPU browser package.
+2. The build verifies its SHA-256 digest and confirms that the release source commit matches the current `master` revision of [developwithAhsan/OpenIGI](https://github.com/developwithAhsan/OpenIGI).
+3. The browser package is extracted into Vercel's `dist/` output. Proigi's own `index.html`, page design, loader and game canvas are served from the Proigi domain.
+4. When the player clicks **Play Game**, OpenIGI's browser runtime starts on Proigi's own canvas. The browser fetches the hosted game-data bundles, reports progress, caches them locally and prefetches mission bundles in the background.
+5. The in-game Co-op screen uses OpenIGI's room system. The browser build uses WebRTC data channels and the existing OpenIGI master/room service; host and join options are passed to the same-site browser runtime.
 
-## Deploy on Vercel
+The pinned version is OpenIGI Web v0.6.1 from commit `719938d4413a9f7ffd408519c066091edcedf906`. The user's OpenIGI fork currently points to that exact commit. The build fails intentionally if the fork moves, so a new engine release must be reviewed and pinned instead of silently mixing source and binary versions.
 
-Import `developwithAhsan/Proigi` and use the repository root. The committed `vercel.json` sets the static-site configuration:
+## Vercel setup
 
-- Framework preset: **Other** (framework `null`)
-- Root directory: `/` (repository root)
-- Build command: empty / disabled
-- Install command: empty / skipped
-- Output directory: `.` (repository root)
+Import `developwithAhsan/Proigi` from GitHub, using the repository root. The committed `vercel.json` configures:
 
-This is intentional: the project is plain HTML, CSS and JavaScript, so there is no npm install or Vite/Next build to fail. Vercel serves the root `index.html` and its static files directly. Keep HTTPS enabled because WebGPU requires a secure context.
+| Setting | Value |
+|---|---|
+| Framework preset | Other |
+| Root directory | Repository root |
+| Install command | Empty / skipped |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Node.js | 22.x |
 
-To import it: Vercel Dashboard → Add New → Project → Import Git Repository → `developwithAhsan/Proigi` → keep the settings above → Deploy. After the first import, pushes to `main` should trigger automatic production deployments when the Git integration is enabled.
+Vercel downloads and extracts the approximately 50 MB verified browser-runtime archive during the build. The output contains the complete browser-side game runtime, including WebAssembly, WebGPU bridge, renderer/audio/platform scripts, host assets and the custom Proigi page. Vercel serves the generated files as static assets from the Proigi domain.
+
+The build removes Apache-style `.br` and `.gz` sidecars to avoid double-compression on Vercel; the original uncompressed WASM/JS assets remain and Vercel's CDN handles response compression. The WASM MIME type is set explicitly.
 
 ## Browser and game requirements
 
-The published OpenIGI browser build uses WebGPU and currently documents the first six Project I.G.I. missions with the original graphics preset. The browser client downloads its hosted data and caches it locally. If embedded content is blocked by a browser or the upstream host, use the **Open official client** or **Open separately** link.
+The game requires HTTPS and a browser with WebGPU support and hardware acceleration. The OpenIGI browser build documents Project I.G.I. missions 1–6 with the original graphics preset. It is not the full desktop remaster.
 
-The desktop game requires a Project I.G.I. installation that the player is entitled to use. The OpenIGI source repository does not contain the original commercial game's models, textures, sounds or mission data. Proigi does not host or distribute those files.
+The OpenIGI browser package does not contain the original commercial game's mission data, models, textures or sounds. The browser runtime obtains the published game-data bundles from OpenIGI's existing data service (`data.openigi.com`) and caches them in the player's browser. Proigi does not copy or redistribute those commercial game-data files.
 
-## Upstream project and attribution
+Co-op signalling and room discovery are handled by OpenIGI's existing room service (the browser code uses `master.openigi.com`). The room system is exposed by the upstream game UI; live availability depends on those upstream services and a compatible game build.
 
-- Browser client and project site: [OpenIGI](https://openigi.com/)
-- Upstream source and releases: [OpenIGI/OpenIGI](https://github.com/OpenIGI/OpenIGI)
-- User's source fork: [developwithAhsan/OpenIGI](https://github.com/developwithAhsan/OpenIGI)
-- OpenIGI engine source license: [GNU GPL-3.0](https://github.com/OpenIGI/OpenIGI/blob/master/LICENSE)
+## Desktop downloads
 
-Proigi is an independent portal, not an official publisher website and not affiliated with Innerloop Studios, Eidos or the game's publishers. Project I.G.I. names, marks and original game content remain with their respective rights holders. The Proigi page links to the upstream services rather than redistributing their engine or game data.
+Windows, Linux and macOS standalone packages and launcher links point to OpenIGI's official release assets. The page refreshes desktop package links from the upstream GitHub latest-release API.
+
+## Source, license and attribution
+
+- OpenIGI source fork used for the pinned build: https://github.com/developwithAhsan/OpenIGI
+- Upstream OpenIGI project and releases: https://github.com/OpenIGI/OpenIGI
+- Full GPL-3.0 license: [OPENIGI-LICENSE-GPL-3.0.txt](OPENIGI-LICENSE-GPL-3.0.txt)
+
+The OpenIGI engine is distributed under GNU GPL-3.0. Its full license and source link are included in the site footer and deployed output. Proigi is an independent portal, not an official publisher website and not affiliated with Innerloop Studios, Eidos or the game's publishers.
