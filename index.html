@@ -27,7 +27,8 @@
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    #stage { position: fixed; inset: 0; z-index: 100; background: #050705; }
+    #stage { display: none; position: fixed; inset: 0; z-index: 100; background: #050705; }
+    #stage:has(#view:not([hidden])) { display: block; }
     #view { display: block; width: 100vw; height: 100vh; height: 100dvh; border: 0; outline: none; background: #050705; touch-action: none; }
     #view[hidden] { display: none; }
     #landing { position: relative; z-index: 1; min-height: 100vh; }
@@ -348,16 +349,16 @@
     <section id="browser" class="section">
       <div class="section-head">
         <div><div class="section-kicker">01 / Browser deployment</div><h2>Play online</h2></div>
-        <p>The browser client runs on OpenIGI's existing host. It downloads the hosted game data once and keeps it in browser storage for later visits.</p>
+        <p>The game runs directly on this site. Press Download &amp; Play and Proigi downloads and verifies all hosted mission data first, saves it in browser storage, and only then starts the engine.</p>
       </div>
       <div class="feature-grid">
         <article class="feature-card">
           <span class="card-index">WEB CLIENT / PROJECT I.G.I.</span>
-          <h3>Start the mission.</h3>
-          <p>Launch the WebGPU version without installing a desktop launcher. The game opens inside this page; use the standalone link if your browser blocks embedded content.</p>
-          <div class="feature-points"><span class="chip">WebGPU</span><span class="chip">Cached files</span><span class="chip">Touch controls on supported devices</span></div>
+          <h3>Download. Verify. Play.</h3>
+          <p>Press Download &amp; Play once. Proigi downloads every required game-data bundle, checks its integrity, stores it in your browser, and starts the game only after the download is complete.</p>
+          <div class="feature-points"><span class="chip">WebGPU</span><span class="chip">All files preloaded</span><span class="chip">Verified browser cache</span></div>
           <div class="game-action" id="action" aria-live="polite">
-            <button class="button primary" id="play" type="button"><span id="play-label">Play Game</span><span aria-hidden="true">↗</span></button>
+            <button class="button primary" id="play" type="button"><span id="play-label">Download &amp; Play</span><span aria-hidden="true">↗</span></button>
             <p class="game-status" id="status">Checking WebGPU and the hosted game files...</p>
             <div class="game-options">
               <button class="change" id="change" type="button" hidden>Choose another game folder</button>
@@ -369,14 +370,14 @@
             <div class="game-progress indeterminate" id="progress"><div></div></div>
             <div class="game-loading-line"><span id="progress-label">Preparing game</span><span id="progress-value"></span></div>
           </div>
-          <p class="engine-runtime-note">Game engine, WebAssembly runtime, renderer and browser files are loaded from this Proigi website. No game iframe or third-party page is opened.</p>
+          <p class="engine-runtime-note">The engine and WebAssembly run on this Proigi page. All hosted mission bundles must finish downloading and pass SHA-256 verification before the game starts. No iframe or external game page is opened.</p>
         </article>
         <article class="feature-card">
           <span class="card-index">REQUIREMENTS / BEFORE LAUNCH</span>
           <h3>Check your browser.</h3>
           <p>Open Proigi over HTTPS and use a current browser with WebGPU and hardware acceleration enabled. If WebGPU is unavailable, use the desktop build instead.</p>
           <div class="feature-points"><span class="chip">Secure connection</span><span class="chip">WebGPU enabled</span><span class="chip">Keyboard / mouse or touch</span></div>
-          <p class="engine-runtime-note">Proigi runs the game canvas directly on this page using the OpenIGI WebGPU engine. Game data is downloaded on demand and cached in your browser.</p>
+          <p class="engine-runtime-note">The first launch downloads all available browser game data. Completed downloads are cached, so later visits can skip files already stored on your device.</p>
         </article>
       </div>
 
