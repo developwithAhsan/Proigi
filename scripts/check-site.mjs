@@ -65,7 +65,7 @@ const gameFiles = await readFile(join(root, "game-files.js"), "utf8");
 const prefetchAt = browserMain.indexOf("await source.prefetchAll(");
 const loadAt = browserMain.indexOf("await files.load(");
 const bootAt = browserMain.indexOf("game.Boot(args)");
-if (!gameFiles.includes("async prefetchAll(") || prefetchAt < 0 || loadAt < 0 || bootAt < 0
+if (!gameFiles.includes("async prefetchAll(") || !browserMain.includes("offer('Download & Play'") || prefetchAt < 0 || loadAt < 0 || bootAt < 0
   || prefetchAt > loadAt || loadAt > bootAt) {
   throw new Error("Every hosted game bundle must be downloaded before the game files are loaded and the engine is booted.");
 }
