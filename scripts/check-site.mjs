@@ -101,6 +101,15 @@ const config = JSON.parse(await readFile(join(project, "vercel.json"), "utf8"));
 if (config.framework !== null || config.buildCommand !== "npm run build" || config.installCommand !== "" || config.outputDirectory !== "dist") {
   throw new Error("Vercel settings do not match the required static game build.");
 }
+for (const header of config.headers ?? []) {
+  if (typeof header.source !== "string" || !header.source.startsWith("/") || header.source.includes("?")) {
+    throw new Error("Vercel header source contains an invalid or optional route pattern: " + header.source);
+  }
+}
+if (!config.headers.some(header => header.source === "/(.*)\\\\.js")
+  || !config.headers.some(header => header.source === "/(.*)\\\\.mjs")) {
+  throw new Error("Separate valid JavaScript and module-JavaScript MIME header patterns are required.");
+}
 
 console.log("Proigi production checks passed.");
 console.log("Verified visible landing page, native game canvas, WebAssembly runtime, full data pre-download before boot, room controls, license, Vercel settings and no iframes.");
