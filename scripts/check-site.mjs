@@ -106,8 +106,8 @@ for (const header of config.headers ?? []) {
     throw new Error("Vercel header source contains an invalid or optional route pattern: " + header.source);
   }
 }
-if (!config.headers.some(header => header.source === "/(.*)\\\\.js")
-  || !config.headers.some(header => header.source === "/(.*)\\\\.mjs")) {
+if (!config.headers.some(header => header.source === String.raw`/(.*)\.js`)
+  || !config.headers.some(header => header.source === String.raw`/(.*)\.mjs`)) {
   throw new Error("Separate valid JavaScript and module-JavaScript MIME header patterns are required.");
 }
 
