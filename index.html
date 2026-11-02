@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0e0b">
-  <meta name="description" content="Proigi — play Project I.G.I. in your browser, host or join co-op rooms, and get the OpenIGI desktop build.">
-  <title>Proigi — Project I.G.I.</title>
+  <meta name="description" content="Play Project I.G.I. in Proigi. The OpenIGI WebAssembly game engine and browser assets are served directly from this website.">
+  <title>Proigi — Play Project I.G.I.</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%230a0e0b'/%3E%3Cpath d='M32 8v48M8 32h48' stroke='%23c9d69a' stroke-width='2' opacity='.45'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23c9d69a' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23e8a15b'/%3E%3C/svg%3E">
   <style>
     :root {
@@ -26,6 +26,32 @@
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
+    #stage { position: fixed; inset: 0; z-index: 100; background: #050705; }
+    #view { display: block; width: 100vw; height: 100vh; height: 100dvh; border: 0; outline: none; background: #050705; touch-action: none; }
+    #view[hidden] { display: none; }
+    #landing { position: relative; z-index: 1; min-height: 100vh; }
+    #landing[hidden] { display: none; }
+    #gpu { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font: 9px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .game-action { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; width: 100%; margin-top: 18px; }
+    .game-action[hidden], .game-loading[hidden] { display: none; }
+    #play { min-width: 190px; }
+    #play:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .game-status { color: var(--muted); font: 10px/1.7 var(--mono); margin: 0; }
+    .game-status[data-tone="ok"] { color: var(--lime); }
+    .game-status[data-tone="error"] { color: var(--red); }
+    .game-options { display: flex; flex-wrap: wrap; gap: 12px 18px; }
+    .game-options button { border: 0; padding: 0; color: var(--muted); background: none; font: 10px var(--mono); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .game-options button:hover { color: var(--lime); }
+    .game-options button[hidden] { display: none; }
+    .game-loading { width: min(420px, 100%); margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .game-progress { height: 3px; width: 100%; overflow: hidden; background: rgba(201,214,154,.14); }
+    .game-progress > div { height: 100%; width: 0; background: var(--lime); transition: width .18s ease; }
+    .game-progress.indeterminate > div { width: 24%; animation: proigi-sweep 1.2s ease-in-out infinite; }
+    @keyframes proigi-sweep { from { transform: translateX(-110%); } to { transform: translateX(430%); } }
+    .game-loading-line { display: flex; justify-content: space-between; gap: 15px; color: var(--muted); font: 9px var(--mono); }
+    .engine-runtime-note { color: var(--dim); font: 9px/1.7 var(--mono); margin: 10px 0 0; }
+    .engine-social-hooks { display: none; }
+    @media (max-width: 620px) { #gpu { display: none; } }
     body {
       margin: 0;
       background:
@@ -280,28 +306,30 @@
   </style>
 </head>
 <body>
+  <div id="stage"><canvas id="view" tabindex="0" hidden aria-label="Project I.G.I. game canvas"></canvas></div>
+  <div id="landing">
   <header class="site-header wrap">
     <a class="brand" href="#top" aria-label="Proigi home">
       <span class="brand-mark">P</span>
       <span class="brand-name">PROIGI<small>PROJECT I.G.I. PORTAL</small></span>
     </a>
     <nav class="nav" aria-label="Main navigation">
-      <a href="#play">Browser</a>
+      <a href="#browser">Browser</a>
       <a href="#coop">Co-op</a>
       <a href="#downloads">Downloads</a>
       <a href="#about">Info</a>
     </nav>
-    <a class="header-action" href="#play">Launch client <span aria-hidden="true">↗</span></a>
+    <a class="header-action" href="#play-button">Play Game <span aria-hidden="true">↗</span></a>
   </header>
 
   <main id="top" class="wrap">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <div class="eyebrow"><span class="signal"></span> Browser client online <span>·</span> Powered by OpenIGI</div>
+        <div class="eyebrow"><span class="signal"></span><span id="gpu" data-state="checking">Checking WebGPU...</span><span>·</span> Proigi native game runtime</div>
         <h1 id="hero-title">MISSION<br><span>READY.</span></h1>
         <p>Play Project I.G.I. from a modern browser, open a co-op room for friends, or install the desktop build. Proigi connects to the existing OpenIGI game client and release services.</p>
         <div class="hero-actions">
-          <button class="button primary" id="heroPlay" type="button">Play in browser <span aria-hidden="true">↗</span></button>
+          <a class="button primary" href="#play-button">Play Game <span aria-hidden="true">↗</span></a>
           <a class="button" href="#downloads">Desktop downloads <span aria-hidden="true">↓</span></a>
         </div>
         <div class="hero-foot"><span>HTTPS + WebGPU</span><span>Browser cache</span><span>Room co-op</span></div>
@@ -316,7 +344,7 @@
       </div>
     </section>
 
-    <section id="play" class="section">
+    <section id="browser" class="section">
       <div class="section-head">
         <div><div class="section-kicker">01 / Browser deployment</div><h2>Play online</h2></div>
         <p>The browser client runs on OpenIGI's existing host. It downloads the hosted game data once and keeps it in browser storage for later visits.</p>
@@ -327,35 +355,31 @@
           <h3>Start the mission.</h3>
           <p>Launch the WebGPU version without installing a desktop launcher. The game opens inside this page; use the standalone link if your browser blocks embedded content.</p>
           <div class="feature-points"><span class="chip">WebGPU</span><span class="chip">Cached files</span><span class="chip">Touch controls on supported devices</span></div>
-          <button class="button primary" id="playButton" type="button">Launch browser game <span aria-hidden="true">↗</span></button>
+          <div class="game-action" id="action" aria-live="polite">
+            <button class="button primary" id="play" type="button"><span id="play-label">Play Game</span><span aria-hidden="true">↗</span></button>
+            <p class="game-status" id="status">Checking WebGPU and the hosted game files...</p>
+            <div class="game-options">
+              <button class="change" id="change" type="button" hidden>Choose another game folder</button>
+              <button class="change" id="own" type="button" hidden>Use my own installed game</button>
+              <button class="change" id="clear" type="button" hidden>Delete cached game files</button>
+            </div>
+          </div>
+          <div class="game-loading" id="loading" aria-live="polite" hidden>
+            <div class="game-progress indeterminate" id="progress"><div></div></div>
+            <div class="game-loading-line"><span id="progress-label">Preparing game</span><span id="progress-value"></span></div>
+          </div>
+          <p class="engine-runtime-note">Game engine, WebAssembly runtime, renderer and browser files are loaded from this Proigi website. No game iframe or third-party page is opened.</p>
         </article>
         <article class="feature-card">
           <span class="card-index">REQUIREMENTS / BEFORE LAUNCH</span>
           <h3>Check your browser.</h3>
           <p>Open Proigi over HTTPS and use a current browser with WebGPU and hardware acceleration enabled. If WebGPU is unavailable, use the desktop build instead.</p>
           <div class="feature-points"><span class="chip">Secure connection</span><span class="chip">WebGPU enabled</span><span class="chip">Keyboard / mouse or touch</span></div>
-          <a class="button" href="https://openigi.com/" target="_blank" rel="noopener noreferrer">Open official client <span aria-hidden="true">↗</span></a>
+          <p class="engine-runtime-note">Proigi runs the game canvas directly on this page using the OpenIGI WebGPU engine. Game data is downloaded on demand and cached in your browser.</p>
         </article>
       </div>
 
-      <div class="game-panel" id="gamePanel" hidden>
-        <div class="game-bar">
-          <strong id="gameModeLabel">OpenIGI browser client</strong>
-          <div class="game-bar-actions">
-            <a class="button small" id="openStandalone" href="https://openigi.com/" target="_blank" rel="noopener noreferrer">Open separately ↗</a>
-            <button class="button small" id="closeGame" type="button">Close ×</button>
-          </div>
-        </div>
-        <iframe
-          class="game-frame"
-          id="gameFrame"
-          title="OpenIGI browser game"
-          loading="lazy"
-          allow="webgpu; fullscreen; autoplay; gamepad; pointer-lock; clipboard-read; clipboard-write"
-          allowfullscreen
-          referrerpolicy="strict-origin-when-cross-origin"></iframe>
-        <p class="game-note">The game and its data are loaded from OpenIGI's servers, not copied to Proigi. If the frame is refused or stays blank, choose “Open separately” above.</p>
-      </div>
+
     </section>
 
     <section id="coop" class="section">
@@ -385,7 +409,7 @@
           <div class="full">
             <button class="button primary" type="button" id="hostRoom">Host a co-op room <span aria-hidden="true">↗</span></button>
           </div>
-          <div class="form-help">A room host must start the browser game and keep the game tab open. Both players need a WebGPU-capable browser or a compatible OpenIGI desktop build.</div>
+          <div class="form-help">Choose Host or Join first, then press Play Game. The browser connects to OpenIGI's master server through WebRTC; both players need a compatible OpenIGI build.</div>
           <div class="toast full" id="coopMessage" role="status" aria-live="polite"></div>
         </form>
       </div>
@@ -407,7 +431,7 @@
           <span class="download-icon">02 / MAC</span>
           <h3>macOS launcher</h3>
           <p>Install the official launcher from the terminal. This uses OpenIGI's own install script.</p>
-          <div class="command-row"><code class="command" id="installCommand">curl -fsSL https://openigi.com/install.sh | bash</code><button class="button small" id="copyCommand" type="button" aria-label="Copy installation command">Copy</button></div>
+          <div class="command-row"><code class="command" id="install-command">curl -fsSL https://openigi.com/install.sh | bash</code><button class="button small" id="install-copy" type="button" aria-label="Copy installation command">Copy</button></div>
           <div class="status-text" id="copyStatus" aria-live="polite">Apple silicon desktop builds</div>
         </article>
         <article class="download-card">
@@ -455,13 +479,17 @@
     </section>
   </main>
 
+  <div class="engine-social-hooks" aria-hidden="true">
+    <span id="discord-name">Discord</span><span id="discord-online" hidden></span><span id="discord-sub"></span>
+    <span id="discord-avatars"></span><span id="github-stars" hidden></span>
+  </div>
   <footer class="site-footer wrap">
     <span>PROIGI · COMMUNITY PORTAL · NOT AN OFFICIAL PUBLISHER WEBSITE</span>
     <div class="footer-links">
-      <a href="https://github.com/developwithAhsan/OpenIGI" target="_blank" rel="noopener noreferrer">Project fork</a>
+      <a href="https://github.com/developwithAhsan/OpenIGI" target="_blank" rel="noopener noreferrer">OpenIGI source fork</a>
       <a href="https://github.com/OpenIGI/OpenIGI" target="_blank" rel="noopener noreferrer">OpenIGI upstream</a>
       <a href="https://openigi.com/" target="_blank" rel="noopener noreferrer">OpenIGI website</a>
-      <a href="https://github.com/OpenIGI/OpenIGI/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">GPL-3.0 license</a>
+      <a href="/OPENIGI-LICENSE-GPL-3.0.txt" target="_blank" rel="noopener noreferrer">GPL-3.0 license</a>
     </div>
   </footer>
 
@@ -470,82 +498,37 @@
   <script>
     (() => {
       "use strict";
-
-      const GAME_ORIGIN = "https://openigi.com/";
-      const gamePanel = document.getElementById("gamePanel");
-      const gameFrame = document.getElementById("gameFrame");
-      const openStandalone = document.getElementById("openStandalone");
-      const gameModeLabel = document.getElementById("gameModeLabel");
       const coopMessage = document.getElementById("coopMessage");
+      const roomCode = document.getElementById("roomCode");
       const playerName = document.getElementById("playerName");
 
-      function gameUrl(mode, code) {
-        const url = new URL(GAME_ORIGIN);
+      function selectRoom(mode, code = "") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("host");
+        url.searchParams.delete("join");
+        url.searchParams.delete("name");
         const name = playerName.value.trim();
         if (name) url.searchParams.set("name", name);
-        if (mode === "host") url.searchParams.set("host", "");
-        if (mode === "join") url.searchParams.set("join", code.trim());
-        return url.toString();
+        if (mode === "host") url.searchParams.set("host", "1");
+        if (mode === "join") url.searchParams.set("join", code.trim().toUpperCase());
+        window.location.assign(url.toString());
       }
 
-      function launchGame(mode = "play", code = "") {
-        const destination = gameUrl(mode, code);
-        gameModeLabel.textContent = mode === "host"
-          ? "OpenIGI / creating a co-op room"
-          : mode === "join"
-            ? "OpenIGI / joining room " + code.trim().toUpperCase()
-            : "OpenIGI / browser game";
-        openStandalone.href = destination;
-        gameFrame.src = destination;
-        gamePanel.hidden = false;
-        coopMessage.textContent = "";
-        gamePanel.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-
-      document.getElementById("heroPlay").addEventListener("click", () => launchGame("play"));
-      document.getElementById("playButton").addEventListener("click", () => launchGame("play"));
-      document.getElementById("hostRoom").addEventListener("click", () => launchGame("host"));
+      document.getElementById("hostRoom").addEventListener("click", () => selectRoom("host"));
       document.getElementById("joinRoom").addEventListener("click", () => {
-        const code = document.getElementById("roomCode").value.trim();
+        const code = roomCode.value.trim();
         if (!code) {
           coopMessage.textContent = "Enter your friend's room code first.";
-          document.getElementById("roomCode").focus();
+          roomCode.focus();
           return;
         }
-        launchGame("join", code);
+        selectRoom("join", code);
       });
 
-      document.getElementById("closeGame").addEventListener("click", () => {
-        gameFrame.src = "about:blank";
-        gamePanel.hidden = true;
-      });
-
-      document.getElementById("coopForm").addEventListener("submit", event => event.preventDefault());
-      document.getElementById("roomCode").addEventListener("input", () => {
-        coopMessage.textContent = "";
-      });
-
-      async function copyText(text, statusElement, button) {
-        try {
-          await navigator.clipboard.writeText(text);
-          if (statusElement) statusElement.textContent = "Copied to clipboard.";
-          if (button) {
-            const old = button.textContent;
-            button.textContent = "Copied";
-            setTimeout(() => button.textContent = old, 1400);
-          }
-        } catch {
-          if (statusElement) statusElement.textContent = "Clipboard access is blocked. Select and copy the command manually.";
-        }
-      }
-
-      const installCommand = document.getElementById("installCommand").textContent.trim();
-      document.getElementById("copyCommand").addEventListener("click", event => {
-        copyText(installCommand, document.getElementById("copyStatus"), event.currentTarget);
-      });
-      document.querySelectorAll(".copyCommand").forEach(button => {
-        button.addEventListener("click", event => copyText(installCommand, document.getElementById("copyStatus"), event.currentTarget));
-      });
+      roomCode.addEventListener("input", () => { coopMessage.textContent = ""; });
+      const current = new URLSearchParams(window.location.search);
+      if (current.has("host")) coopMessage.textContent = "Host mode selected. Press Play Game above to start.";
+      if (current.has("join")) coopMessage.textContent = "Room " + current.get("join").toUpperCase() + " selected. Press Play Game above to join.";
 
       async function loadReleaseLinks() {
         const status = document.getElementById("releaseStatus");
@@ -558,7 +541,6 @@
           const version = String(release.tag_name || "").replace(/^v/, "");
           const assets = Array.isArray(release.assets) ? release.assets : [];
           const findAsset = name => assets.find(asset => asset.name === name)?.browser_download_url;
-
           const links = [
             ["windowsBuild", "openigi-game-" + version + "-win-x64.exe"],
             ["linuxBuild", "openigi-game-" + version + "-linux-x64"],
@@ -569,14 +551,16 @@
             if (url) document.getElementById(id).href = url;
           }
           if (release.html_url) document.getElementById("releasePage").href = release.html_url;
-          status.textContent = "Latest stable release: " + (release.tag_name || version) + ". Direct packages are served by GitHub.";
+          status.textContent = "Latest stable release: " + release.tag_name + ". Desktop packages download from GitHub.";
         } catch (error) {
-          status.textContent = "Showing the last verified package links. " + error.message;
+          status.textContent = "Showing verified package links. " + error.message;
         }
       }
-
       loadReleaseLinks();
     })();
   </script>
+  <!-- OPENIGI_IMPORT_MAP -->
+  <script type="module" src="main.js"></script>
+  </div>
 </body>
 </html>
