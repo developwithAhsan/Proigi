@@ -11,14 +11,17 @@ A lightweight portal for the Project I.G.I. browser client and OpenIGI desktop r
 
 ## Deploy on Vercel
 
-Import `developwithAhsan/Proigi` and use the repository root.
+Import `developwithAhsan/Proigi` and use the repository root. The committed `vercel.json` sets the static-site configuration:
 
-- Framework preset: **Other**
-- Build command: leave empty
-- Output directory: leave empty (serve the repository root)
-- Install command: leave empty
+- Framework preset: **Other** (framework `null`)
+- Root directory: `/` (repository root)
+- Build command: empty / disabled
+- Install command: empty / skipped
+- Output directory: `.` (repository root)
 
-The root `index.html` is the site entry point. HTTPS is required for WebGPU.
+This is intentional: the project is plain HTML, CSS and JavaScript, so there is no npm install or Vite/Next build to fail. Vercel serves the root `index.html` and its static files directly. Keep HTTPS enabled because WebGPU requires a secure context.
+
+To import it: Vercel Dashboard → Add New → Project → Import Git Repository → `developwithAhsan/Proigi` → keep the settings above → Deploy. After the first import, pushes to `main` should trigger automatic production deployments when the Git integration is enabled.
 
 ## Browser and game requirements
 
