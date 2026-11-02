@@ -12,6 +12,10 @@ if (html.toLowerCase().includes("<iframe") || html.includes("gameFrame") || html
 if (!html.includes('<canvas id="view"') || !html.includes('<div id="landing">')) {
   throw new Error("The direct game canvas or Proigi landing shell is missing.");
 }
+if (!/#stage\s*\{[^}]*display:\s*none/.test(html) || !html.includes("#stage:has(#view:not([hidden]))")) {
+  throw new Error("The game stage must remain hidden until its canvas is activated; otherwise it covers the landing page.");
+}
+
 if (!html.includes('<script type="module" src="main.js"></script>')) {
   throw new Error("OpenIGI's browser runtime is not loaded by the Proigi page.");
 }
@@ -56,6 +60,16 @@ for (const file of [
   await stat(join(root, file));
 }
 
+const browserMain = await readFile(join(root, "main.js"), "utf8");
+const gameFiles = await readFile(join(root, "game-files.js"), "utf8");
+const prefetchAt = browserMain.indexOf("await source.prefetchAll(");
+const loadAt = browserMain.indexOf("await files.load(");
+const bootAt = browserMain.indexOf("game.Boot(args)");
+if (!gameFiles.includes("async prefetchAll(") || prefetchAt < 0 || loadAt < 0 || bootAt < 0
+  || prefetchAt > loadAt || loadAt > bootAt) {
+  throw new Error("Every hosted game bundle must be downloaded before the game files are loaded and the engine is booted.");
+}
+
 const framework = join(root, "_framework");
 const frameworkFiles = await readdir(framework);
 if (!frameworkFiles.some(name => name.endsWith(".wasm"))) {
@@ -79,7 +93,7 @@ if (await countIframes(root)) {
 }
 
 const meta = JSON.parse(await readFile(join(root, "proigi-build.json"), "utf8"));
-if (meta.sourceCommit !== "719938d4413a9f7ffd408519c066091edcedf906" || meta.version !== "0.6.1") {
+if (meta.sourceCommit !== "719938d4413a9f7ffd408519c066091edcedf906" || meta.version !== "0.6.1" || meta.runtimePatch !== "download-before-boot-v1") {
   throw new Error("The game runtime is not built from the pinned OpenIGI source revision.");
 }
 
@@ -89,4 +103,4 @@ if (config.framework !== null || config.buildCommand !== "npm run build" || conf
 }
 
 console.log("Proigi production checks passed.");
-console.log("Verified native game canvas, WebAssembly runtime, import map, room controls, license, Vercel settings and no iframes.");
+console.log("Verified visible landing page, native game canvas, WebAssembly runtime, full data pre-download before boot, room controls, license, Vercel settings and no iframes.");
